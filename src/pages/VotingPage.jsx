@@ -3,12 +3,12 @@ import styled from "styled-components";
 import { useMutation } from "react-query";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { motion } from "framer-motion";
-import { FaRobot, FaFileUpload } from "react-icons/fa";
-import { MdOutlineMedicalServices } from "react-icons/md";
-import { keywordGroups } from "../utils/keywordGroups";
+import { MdOutlineIntegrationInstructions } from "react-icons/md";
+import { FaFileImage, FaFileUpload } from "react-icons/fa";
+import "react-toastify/dist/ReactToastify.css";
 import mammoth from "mammoth";
+import { keywordGroups } from "../utils/keywordGroups";
 
 // Styled Components
 const Container = styled.div`
@@ -32,19 +32,16 @@ const Form = styled.form`
     border-radius: 10px;
     margin-bottom: 2rem;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-`;
 
-const Select = styled.select`
-    padding: 0.5rem;
-    border-radius: 6px;
-    margin-top: 0.5rem;
-    width: 100%;
+    label {
+        display: block;
+        margin-top: 0.5rem;
+    }
 `;
 
 const TextArea = styled.textarea`
     width: 100%;
     margin-top: 0.5rem;
-
     padding: 1rem;
     font-size: 15px;
     border-radius: 8px;
@@ -78,6 +75,12 @@ const FileInput = styled.label`
     }
 `;
 
+const Preview = styled.img`
+    margin-top: 1rem;
+    max-width: 100%;
+    border-radius: 10px;
+`;
+
 const SubmitBtn = styled.button`
     display: block;
     margin-top: 1.5rem;
@@ -92,6 +95,22 @@ const SubmitBtn = styled.button`
 
     &:hover {
         background-color: #005fa3;
+    }
+`;
+
+const ResultBox = styled(motion.div)`
+    background-color: #fffaf0;
+    padding: 1.2rem;
+    margin-top: 2rem;
+    border-radius: 10px;
+    border-left: 5px solid #f39c12;
+
+    h4 {
+        margin-bottom: 1rem;
+    }
+
+    p {
+        margin: 0.4rem 0;
     }
 `;
 
@@ -120,30 +139,27 @@ const Token = styled.button`
     }
 `;
 
-const ResultBox = styled(motion.div)`
-    background-color: #f0fff0;
-    padding: 1.2rem;
-    margin-top: 2rem;
-    border-radius: 10px;
-    border-left: 5px solid #2ecc71;
-`;
-
-// Component chính
-export default function TextPage() {
+export default function VotingPage() {
+    const [model, setModel] = useState("resnet_sbert");
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const [text, setText] = useState("");
-    const [model, setModel] = useState("FastText");
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [textFile, setTextFile] = useState(null);
 
-    const mutation = useMutation(async (file) => {
+    const mutation = useMutation(async () => {
+        if (!imageFile) throw new Error("Chưa có ảnh");
+
         const formData = new FormData();
-        formData.append("text", text);
         formData.append("model_name", model);
-        if (file) {
-            formData.append("file", file);
+        formData.append("image", imageFile);
+        if (text.trim()) {
+            formData.append("text", text);
+        } else if (textFile) {
+            formData.append("text_file", textFile);
         }
 
         const res = await axios.post(
-            "http://127.0.0.1:8000/text/predict-text/",
+            "http://127.0.0.1:8000/voting/predict-voting/",
             formData,
             {
                 headers: {
@@ -155,79 +171,93 @@ export default function TextPage() {
     });
 
     useEffect(() => {
-        if (mutation.isSuccess) {
-            toast.success("🎉 Dự đoán thành công!");
-        }
-        if (mutation.isError) {
-            toast.error("❌ Đã xảy ra lỗi!");
-        }
+        if (mutation.isSuccess) toast.success("Dự đoán thành công!");
+        if (mutation.isError) toast.error("Dự đoán thất bại!");
     }, [mutation.isSuccess, mutation.isError]);
-
-    const handleTokenClick = (token) => {
-        setText((prev) => (prev ? prev + ", " + token : token));
-    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!text.trim()) {
-            toast.warn("Vui lòng nhập triệu chứng hoặc chọn file .txt");
+        if (!imageFile || (!text.trim() && !textFile)) {
+            toast.warn("Cần cung cấp cả ảnh X-quang và mô tả triệu chứng");
             return;
         }
 
-        mutation.mutate(selectedFile);
+        mutation.mutate();
     };
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
+    const handleImageChange = (e) => {
+        const file = e.target.files?.[0];
         if (!file) return;
+        setImageFile(file);
+        setImagePreview(URL.createObjectURL(file));
+    };
 
-        setSelectedFile(file);
+    const handleTextFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setTextFile(file);
 
-        const fileExtension = file.name.split(".").pop().toLowerCase();
+        const ext = file.name.split(".").pop().toLowerCase();
 
-        if (fileExtension === "txt") {
+        if (ext === "txt") {
             const reader = new FileReader();
             reader.onload = (event) => {
-                setText(event.target.result);
+                setText(event.target?.result);
             };
             reader.readAsText(file);
-        } else if (fileExtension === "docx") {
+        } else if (ext === "docx") {
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const arrayBuffer = event.target.result;
+                const arrayBuffer = event.target?.result;
                 const result = await mammoth.extractRawText({ arrayBuffer });
                 setText(result.value);
             };
             reader.readAsArrayBuffer(file);
         } else {
-            toast.error("Định dạng file không được hỗ trợ");
+            toast.error("❌ Định dạng không hỗ trợ (.txt hoặc .docx)");
         }
+    };
+
+    const handleTokenClick = (token) => {
+        setText((prev) => (prev ? prev + ", " + token : token));
+    };
+
+    const modelLabels = {
+        resnet_sbert: "ResNet + SBERT",
+        mobilenet_sbert: "MobileNet + SBERT",
+        densenet121_sbert: "DenseNet121 + SBERT",
+        densenet169_sbert: "DenseNet169 + SBERT",
     };
 
     return (
         <Container>
             <Title>
-                <MdOutlineMedicalServices size={28} />
-                Dự đoán bệnh từ văn bản triệu chứng
+                <MdOutlineIntegrationInstructions size={28} />
+                Dự đoán bệnh đa phương thức
             </Title>
 
             <Form onSubmit={handleSubmit}>
-                <label>Chọn mô hình:</label>
-                <Select
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                >
-                    <option value="FastText">FastText</option>
-                    <option value="Electra">Electra</option>
-                    <option value="DistillBERT">DistillBERT</option>
-                </Select>
+                <FileInput>
+                    <FaFileImage />
+                    <span>Chọn ảnh X-quang</span>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                    />
+                </FileInput>
 
+                {imagePreview && (
+                    <Preview src={imagePreview} alt="Preview ảnh" />
+                )}
+
+                <label>Mô tả triệu chứng:</label>
                 <TextArea
-                    rows={8}
+                    rows={6}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Nhập triệu chứng hoặc chọn từ gợi ý..."
+                    placeholder="Nhập triệu chứng hoặc tải file..."
                 />
 
                 <FileInput>
@@ -235,8 +265,8 @@ export default function TextPage() {
                     <span>Tải file văn bản (.txt hoặc .docx)</span>
                     <input
                         type="file"
-                        accept=".txt,.doc,.docx"
-                        onChange={handleFileChange}
+                        accept=".txt,.docx"
+                        onChange={handleTextFileChange}
                     />
                 </FileInput>
 
@@ -245,6 +275,7 @@ export default function TextPage() {
                 </SubmitBtn>
             </Form>
 
+            {/* Hiển thị gợi ý triệu chứng */}
             {keywordGroups.map((group, i) => (
                 <div key={i}>
                     <GroupTitle>{group.title}</GroupTitle>
@@ -261,6 +292,7 @@ export default function TextPage() {
                 </div>
             ))}
 
+            {/* Kết quả dự đoán */}
             {mutation.isSuccess && (
                 <ResultBox
                     initial={{ opacity: 0, y: 20 }}
@@ -268,17 +300,31 @@ export default function TextPage() {
                     transition={{ duration: 0.5 }}
                 >
                     <h4>Kết quả dự đoán:</h4>
+
                     <p>
-                        <strong>Model:</strong> {mutation.data?.data?.model}
+                        <strong>Chẩn đoán chính:</strong>{" "}
+                        {mutation.data?.data?.final_prediction?.label_name ||
+                            "Không xác định"}
                     </p>
+
                     <p>
-                        <strong>Label:</strong> {mutation.data?.data?.label}
+                        <strong>Top 3 dự đoán:</strong>
                     </p>
-                    <p>
-                        <strong>Confidence:</strong>{" "}
-                        {(mutation.data?.data?.confidence * 100).toFixed(2) +
-                            " %"}
-                    </p>
+                    <ul>
+                        {mutation.data?.data?.top_predictions?.top_3?.map(
+                            ([id, score], idx) => {
+                                const labelName =
+                                    mutation.data.data.label_mapping?.[
+                                        String(id)
+                                    ] || `Label ${id}`;
+                                return (
+                                    <li key={idx}>
+                                        {labelName}: {score} điểm
+                                    </li>
+                                );
+                            }
+                        )}
+                    </ul>
                 </ResultBox>
             )}
 

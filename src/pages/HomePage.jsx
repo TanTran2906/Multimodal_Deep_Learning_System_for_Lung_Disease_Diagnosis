@@ -89,7 +89,7 @@ export default function HomePage() {
 
                 <FeatureCard to="/multimodal">
                     <FaRandom />
-                    <span>Đa mô thức</span>
+                    <span>Đa phương thức</span>
                 </FeatureCard>
 
                 <FeatureCard to="/voting">
@@ -103,7 +103,7 @@ export default function HomePage() {
                 </FeatureCard>
             </FeatureGrid>
             <Illustration
-                src="/images/ai-illustration.svg"
+                src="/icons/ai-illustration.svg"
                 alt="AI Illustration"
             />
         </Container>

@@ -3,12 +3,10 @@ import styled from "styled-components";
 import { useMutation } from "react-query";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import { motion } from "framer-motion";
-import { FaRobot, FaFileUpload } from "react-icons/fa";
-import { MdOutlineMedicalServices } from "react-icons/md";
-import { keywordGroups } from "../utils/keywordGroups";
-import mammoth from "mammoth";
+import { MdImageSearch } from "react-icons/md";
+import { FaFileImage } from "react-icons/fa";
+import "react-toastify/dist/ReactToastify.css";
 
 // Styled Components
 const Container = styled.div`
@@ -41,18 +39,6 @@ const Select = styled.select`
     width: 100%;
 `;
 
-const TextArea = styled.textarea`
-    width: 100%;
-    margin-top: 0.5rem;
-
-    padding: 1rem;
-    font-size: 15px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    resize: vertical;
-    box-sizing: border-box;
-`;
-
 const FileInput = styled.label`
     display: inline-flex;
     align-items: center;
@@ -78,6 +64,12 @@ const FileInput = styled.label`
     }
 `;
 
+const Preview = styled.img`
+    margin-top: 1rem;
+    max-width: 100%;
+    border-radius: 10px;
+`;
+
 const SubmitBtn = styled.button`
     display: block;
     margin-top: 1.5rem;
@@ -95,55 +87,35 @@ const SubmitBtn = styled.button`
     }
 `;
 
-const GroupTitle = styled.h4`
-    margin-top: 1.5rem;
-    color: #444;
-`;
-
-const TokenGroup = styled.div`
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-`;
-
-const Token = styled.button`
-    background-color: #e1f5fe;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.3s;
-
-    &:hover {
-        background-color: #b3e5fc;
-    }
-`;
-
 const ResultBox = styled(motion.div)`
     background-color: #f0fff0;
     padding: 1.2rem;
     margin-top: 2rem;
     border-radius: 10px;
     border-left: 5px solid #2ecc71;
+    color: #2d572c;
+
+    h4 {
+        margin-bottom: 1rem;
+    }
+
+    p {
+        margin: 0.4rem 0;
+    }
 `;
 
-// Component chính
-export default function TextPage() {
-    const [text, setText] = useState("");
-    const [model, setModel] = useState("FastText");
+export default function ImagePage() {
+    const [model, setModel] = useState("ViT");
     const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
 
     const mutation = useMutation(async (file) => {
         const formData = new FormData();
-        formData.append("text", text);
         formData.append("model_name", model);
-        if (file) {
-            formData.append("file", file);
-        }
+        formData.append("file", file);
 
         const res = await axios.post(
-            "http://127.0.0.1:8000/text/predict-text/",
+            "http://127.0.0.1:8000/image/predict-image/",
             formData,
             {
                 headers: {
@@ -156,22 +128,18 @@ export default function TextPage() {
 
     useEffect(() => {
         if (mutation.isSuccess) {
-            toast.success("🎉 Dự đoán thành công!");
+            toast.success("🎉 Dự đoán ảnh thành công!");
         }
         if (mutation.isError) {
-            toast.error("❌ Đã xảy ra lỗi!");
+            toast.error("❌ Đã xảy ra lỗi khi dự đoán!");
         }
     }, [mutation.isSuccess, mutation.isError]);
-
-    const handleTokenClick = (token) => {
-        setText((prev) => (prev ? prev + ", " + token : token));
-    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        if (!text.trim()) {
-            toast.warn("Vui lòng nhập triệu chứng hoặc chọn file .txt");
+        if (!selectedFile) {
+            toast.warn("Vui lòng chọn ảnh trước khi gửi.");
             return;
         }
 
@@ -181,35 +149,15 @@ export default function TextPage() {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         setSelectedFile(file);
-
-        const fileExtension = file.name.split(".").pop().toLowerCase();
-
-        if (fileExtension === "txt") {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setText(event.target.result);
-            };
-            reader.readAsText(file);
-        } else if (fileExtension === "docx") {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const arrayBuffer = event.target.result;
-                const result = await mammoth.extractRawText({ arrayBuffer });
-                setText(result.value);
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            toast.error("Định dạng file không được hỗ trợ");
-        }
+        setPreviewUrl(URL.createObjectURL(file));
     };
 
     return (
         <Container>
             <Title>
-                <MdOutlineMedicalServices size={28} />
-                Dự đoán bệnh từ văn bản triệu chứng
+                <MdImageSearch size={28} />
+                Dự đoán bệnh từ ảnh y tế
             </Title>
 
             <Form onSubmit={handleSubmit}>
@@ -218,48 +166,29 @@ export default function TextPage() {
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                 >
-                    <option value="FastText">FastText</option>
-                    <option value="Electra">Electra</option>
-                    <option value="DistillBERT">DistillBERT</option>
+                    <option value="ViT">ViT</option>
+                    <option value="Lenet">LeNet</option>
+                    <option value="MobileNet">MobileNet</option>
+                    <option value="DenseNet121">DenseNet121</option>
+                    <option value="DenseNet169">DenseNet169</option>
                 </Select>
 
-                <TextArea
-                    rows={8}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder="Nhập triệu chứng hoặc chọn từ gợi ý..."
-                />
-
                 <FileInput>
-                    <FaFileUpload />
-                    <span>Tải file văn bản (.txt hoặc .docx)</span>
+                    <FaFileImage />
+                    <span>Chọn ảnh (PNG, JPG...)</span>
                     <input
                         type="file"
-                        accept=".txt,.doc,.docx"
+                        accept="image/*"
                         onChange={handleFileChange}
                     />
                 </FileInput>
 
+                {previewUrl && <Preview src={previewUrl} alt="Xem trước ảnh" />}
+
                 <SubmitBtn type="submit" disabled={mutation.isLoading}>
-                    {mutation.isLoading ? "🔄 Đang dự đoán..." : "🤖 Dự đoán"}
+                    {mutation.isLoading ? "🔄 Đang dự đoán..." : "📷 Dự đoán"}
                 </SubmitBtn>
             </Form>
-
-            {keywordGroups.map((group, i) => (
-                <div key={i}>
-                    <GroupTitle>{group.title}</GroupTitle>
-                    <TokenGroup>
-                        {group.items.map((token, j) => (
-                            <Token
-                                key={j}
-                                onClick={() => handleTokenClick(token)}
-                            >
-                                {token}
-                            </Token>
-                        ))}
-                    </TokenGroup>
-                </div>
-            ))}
 
             {mutation.isSuccess && (
                 <ResultBox
@@ -277,7 +206,7 @@ export default function TextPage() {
                     <p>
                         <strong>Confidence:</strong>{" "}
                         {(mutation.data?.data?.confidence * 100).toFixed(2) +
-                            " %"}
+                            "%"}
                     </p>
                 </ResultBox>
             )}

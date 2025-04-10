@@ -4,6 +4,7 @@ import AppRoutes from "./routes";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { Provider } from "react-redux";
 import store from "./features/store";
+// import MainLayout from "./layouts/MainLayout";
 
 const queryClient = new QueryClient();
 

@@ -64,7 +64,7 @@ export default function MainLayout() {
                         <NavLink to="/image">Dự đoán ảnh</NavLink>
                     </NavItem>
                     <NavItem>
-                        <NavLink to="/multimodal">Đa mô thức</NavLink>
+                        <NavLink to="/multimodal">Đa phương thức</NavLink>
                     </NavItem>
                     <NavItem>
                         <NavLink to="/voting">Bầu chọn đa số</NavLink>
@@ -72,9 +72,9 @@ export default function MainLayout() {
                     <NavItem>
                         <NavLink to="/maxsat">Giải pháp MaxSAT</NavLink>
                     </NavItem>
-                    <NavItem>
+                    {/* <NavItem>
                         <NavLink to="/demo">Thử nghiệm</NavLink>
-                    </NavItem>
+                    </NavItem> */}
                 </NavList>
             </Sidebar>
             <Content>
