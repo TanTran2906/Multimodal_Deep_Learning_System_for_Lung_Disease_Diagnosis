@@ -7,6 +7,7 @@ import MultimodalPage from "../pages/MultimodalPage";
 import VotingPage from "../pages/VotingPage";
 // import DemoPage from "../pages/DemoPage";
 import MaxSatPage from "../pages/MaxSATPage";
+import RAGPage from "../pages/RAGPage";
 
 export default function AppRoutes() {
     return (
@@ -19,6 +20,8 @@ export default function AppRoutes() {
                     <Route path="multimodal" element={<MultimodalPage />} />
                     <Route path="voting" element={<VotingPage />} />
                     <Route path="maxsat" element={<MaxSatPage />} />
+                    <Route path="rag" element={<RAGPage />} />
+
                     {/* <Route path="demo" element={<DemoPage />} /> */}
                 </Route>
             </Routes>

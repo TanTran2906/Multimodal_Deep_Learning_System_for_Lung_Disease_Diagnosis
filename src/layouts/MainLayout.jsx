@@ -72,6 +72,9 @@ export default function MainLayout() {
                     <NavItem>
                         <NavLink to="/maxsat">Giải pháp MaxSAT</NavLink>
                     </NavItem>
+                    <NavItem>
+                        <NavLink to="/rag">Giải pháp RAG</NavLink>
+                    </NavItem>
                     {/* <NavItem>
                         <NavLink to="/demo">Thử nghiệm</NavLink>
                     </NavItem> */}
