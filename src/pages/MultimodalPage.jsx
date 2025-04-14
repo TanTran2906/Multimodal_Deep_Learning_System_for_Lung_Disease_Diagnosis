@@ -9,6 +9,7 @@ import { FaFileImage, FaFileUpload } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
 import mammoth from "mammoth";
 import { keywordGroups } from "../utils/keywordGroups";
+import { labelMapping } from "../utils/labelMapping";
 
 // Styled Components
 const Container = styled.div`
@@ -152,6 +153,8 @@ export default function MultimodalPage() {
     const [imagePreview, setImagePreview] = useState(null);
     const [text, setText] = useState("");
     const [textFile, setTextFile] = useState(null);
+    const [startTime, setStartTime] = useState(null); // Lưu thời gian bắt đầu
+    const [endTime, setEndTime] = useState(null); // Lưu thời gian kết thúc
 
     const mutation = useMutation(async () => {
         if (!imageFile) throw new Error("Chưa có ảnh");
@@ -165,6 +168,8 @@ export default function MultimodalPage() {
             formData.append("text_file", textFile);
         }
 
+        setStartTime(Date.now()); // Ghi nhận thời gian bắt đầu
+
         const res = await axios.post(
             "http://127.0.0.1:8000/multimodal/predict-multimodal/",
             formData,
@@ -174,6 +179,9 @@ export default function MultimodalPage() {
                 },
             }
         );
+
+        setEndTime(Date.now()); // Ghi nhận thời gian kết thúc
+
         return res;
     });
 
@@ -237,6 +245,9 @@ export default function MultimodalPage() {
         densenet169_sbert: "DenseNet169 + SBERT",
     };
 
+    const duration =
+        endTime && startTime ? ((endTime - startTime) / 1000).toFixed(2) : null; // Tính thời gian chạy
+
     return (
         <Container>
             <Title>
@@ -297,6 +308,40 @@ export default function MultimodalPage() {
                 </SubmitBtn>
             </Form>
 
+            {/* Kết quả dự đoán */}
+            {mutation.isSuccess && (
+                <ResultBox
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <h4>Kết quả dự đoán:</h4>
+                    <p>
+                        <strong>Mô hình:</strong>{" "}
+                        {modelLabels[mutation.data?.data?.model] ||
+                            mutation.data?.data?.model}
+                    </p>
+                    <p>
+                        <strong>Chẩn đoán:</strong>{" "}
+                        {labelMapping[mutation.data?.data?.label] ||
+                            mutation.data?.data?.label}
+                    </p>
+                    <p>
+                        <strong>Độ chính xác:</strong>{" "}
+                        {mutation.data?.data?.confidence
+                            ? (mutation.data.data.confidence * 100).toFixed(2) +
+                              "%"
+                            : "N/A"}
+                    </p>
+
+                    {duration && (
+                        <p>
+                            <strong>Thời gian chạy:</strong> {duration} giây
+                        </p>
+                    )}
+                </ResultBox>
+            )}
+
             {/* Hiển thị gợi ý triệu chứng */}
             {keywordGroups.map((group, i) => (
                 <div key={i}>
@@ -313,32 +358,6 @@ export default function MultimodalPage() {
                     </TokenGroup>
                 </div>
             ))}
-
-            {/* Kết quả dự đoán */}
-            {mutation.isSuccess && (
-                <ResultBox
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <h4>Kết quả dự đoán:</h4>
-                    <p>
-                        <strong>Model:</strong>{" "}
-                        {modelLabels[mutation.data?.data?.model] ||
-                            mutation.data?.data?.model}
-                    </p>
-                    <p>
-                        <strong>Label:</strong> {mutation.data?.data?.label}
-                    </p>
-                    <p>
-                        <strong>Confidence:</strong>{" "}
-                        {mutation.data?.data?.confidence
-                            ? (mutation.data.data.confidence * 100).toFixed(2) +
-                              "%"
-                            : "N/A"}
-                    </p>
-                </ResultBox>
-            )}
 
             <ToastContainer />
         </Container>

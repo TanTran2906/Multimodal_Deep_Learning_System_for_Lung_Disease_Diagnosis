@@ -1,6 +1,13 @@
 // src/pages/HomePage.jsx
 import styled from "styled-components";
-import { FaRobot, FaImage, FaRandom, FaVoteYea, FaCogs } from "react-icons/fa";
+import {
+    FaRobot,
+    FaImage,
+    FaRandom,
+    FaVoteYea,
+    FaCogs,
+    FaBookOpen,
+} from "react-icons/fa";
 import { Link } from "react-router-dom";
 
 const Container = styled.div`
@@ -71,7 +78,7 @@ const Illustration = styled.img`
 export default function HomePage() {
     return (
         <Container>
-            <Title>🔮 Chào mừng đến với Hệ thống Dự đoán</Title>
+            <Title>🔮 Chào mừng đến với Hệ thống chẩn đoán bệnh</Title>
             <Subtitle>
                 Hãy chọn một chức năng bên dưới để bắt đầu khám phá!
             </Subtitle>
@@ -100,6 +107,11 @@ export default function HomePage() {
                 <FeatureCard to="/maxsat">
                     <FaCogs />
                     <span>Giải pháp MaxSAT</span>
+                </FeatureCard>
+
+                <FeatureCard to="/rag">
+                    <FaBookOpen />
+                    <span>Giải pháp RAG</span>
                 </FeatureCard>
             </FeatureGrid>
             <Illustration

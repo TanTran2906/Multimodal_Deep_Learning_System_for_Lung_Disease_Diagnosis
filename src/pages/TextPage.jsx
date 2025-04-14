@@ -9,6 +9,7 @@ import { FaRobot, FaFileUpload } from "react-icons/fa";
 import { MdOutlineMedicalServices } from "react-icons/md";
 import { keywordGroups } from "../utils/keywordGroups";
 import mammoth from "mammoth";
+import { labelMapping } from "../utils/labelMapping";
 
 // Styled Components
 const Container = styled.div`
@@ -128,11 +129,12 @@ const ResultBox = styled(motion.div)`
     border-left: 5px solid #2ecc71;
 `;
 
-// Component chính
 export default function TextPage() {
     const [text, setText] = useState("");
     const [model, setModel] = useState("FastText");
     const [selectedFile, setSelectedFile] = useState(null);
+    const [startTime, setStartTime] = useState(null); // Lưu thời gian bắt đầu
+    const [endTime, setEndTime] = useState(null); // Lưu thời gian kết thúc
 
     const mutation = useMutation(async (file) => {
         const formData = new FormData();
@@ -141,6 +143,8 @@ export default function TextPage() {
         if (file) {
             formData.append("file", file);
         }
+
+        setStartTime(Date.now()); // Ghi nhận thời gian bắt đầu
 
         const res = await axios.post(
             "http://127.0.0.1:8000/text/predict-text/",
@@ -151,15 +155,18 @@ export default function TextPage() {
                 },
             }
         );
+
+        setEndTime(Date.now()); // Ghi nhận thời gian kết thúc
+
         return res;
     });
 
     useEffect(() => {
         if (mutation.isSuccess) {
-            toast.success("🎉 Dự đoán thành công!");
+            toast.success("Dự đoán thành công!");
         }
         if (mutation.isError) {
-            toast.error("❌ Đã xảy ra lỗi!");
+            toast.error("Đã xảy ra lỗi!");
         }
     }, [mutation.isSuccess, mutation.isError]);
 
@@ -205,6 +212,9 @@ export default function TextPage() {
         }
     };
 
+    const duration =
+        endTime && startTime ? ((endTime - startTime) / 1000).toFixed(2) : null; // Tính thời gian chạy
+
     return (
         <Container>
             <Title>
@@ -245,6 +255,35 @@ export default function TextPage() {
                 </SubmitBtn>
             </Form>
 
+            {mutation.isSuccess && (
+                <ResultBox
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <h4>Kết quả dự đoán:</h4>
+                    <p>
+                        <strong>Mô hình:</strong> {mutation.data?.data?.model}
+                    </p>
+                    <p>
+                        <strong>Chẩn đoán:</strong>{" "}
+                        {labelMapping[mutation.data?.data?.label] ||
+                            mutation.data?.data?.label}
+                    </p>
+
+                    <p>
+                        <strong>Độ chính xác:</strong>{" "}
+                        {(mutation.data?.data?.confidence * 100).toFixed(2) +
+                            " %"}
+                    </p>
+                    {duration && (
+                        <p>
+                            <strong>Thời gian chạy:</strong> {duration} giây
+                        </p>
+                    )}
+                </ResultBox>
+            )}
+
             {keywordGroups.map((group, i) => (
                 <div key={i}>
                     <GroupTitle>{group.title}</GroupTitle>
@@ -260,27 +299,6 @@ export default function TextPage() {
                     </TokenGroup>
                 </div>
             ))}
-
-            {mutation.isSuccess && (
-                <ResultBox
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <h4>Kết quả dự đoán:</h4>
-                    <p>
-                        <strong>Model:</strong> {mutation.data?.data?.model}
-                    </p>
-                    <p>
-                        <strong>Label:</strong> {mutation.data?.data?.label}
-                    </p>
-                    <p>
-                        <strong>Confidence:</strong>{" "}
-                        {(mutation.data?.data?.confidence * 100).toFixed(2) +
-                            " %"}
-                    </p>
-                </ResultBox>
-            )}
 
             <ToastContainer />
         </Container>

@@ -9,6 +9,8 @@ import { FaFileImage, FaFileUpload } from "react-icons/fa";
 import "react-toastify/dist/ReactToastify.css";
 import mammoth from "mammoth";
 import { keywordGroups } from "../utils/keywordGroups";
+import { labelMapping } from "../utils/labelMapping";
+import VotingExplanationTooltip from "../components/VotingExplanationTooltip";
 
 // Styled Components
 const Container = styled.div`
@@ -145,6 +147,8 @@ export default function VotingPage() {
     const [imagePreview, setImagePreview] = useState(null);
     const [text, setText] = useState("");
     const [textFile, setTextFile] = useState(null);
+    const [startTime, setStartTime] = useState(null); // Lưu thời gian bắt đầu
+    const [endTime, setEndTime] = useState(null); // Lưu thời gian kết thúc
 
     const mutation = useMutation(async () => {
         if (!imageFile) throw new Error("Chưa có ảnh");
@@ -157,6 +161,7 @@ export default function VotingPage() {
         } else if (textFile) {
             formData.append("text_file", textFile);
         }
+        setStartTime(Date.now()); // Ghi nhận thời gian bắt đầu
 
         const res = await axios.post(
             "http://127.0.0.1:8000/voting/predict-voting/",
@@ -167,6 +172,8 @@ export default function VotingPage() {
                 },
             }
         );
+        setEndTime(Date.now()); // Ghi nhận thời gian kết thúc
+
         return res;
     });
 
@@ -230,6 +237,9 @@ export default function VotingPage() {
         densenet169_sbert: "DenseNet169 + SBERT",
     };
 
+    const duration =
+        endTime && startTime ? ((endTime - startTime) / 1000).toFixed(2) : null; // Tính thời gian chạy
+
     return (
         <Container>
             <Title>
@@ -275,6 +285,142 @@ export default function VotingPage() {
                 </SubmitBtn>
             </Form>
 
+            {/* Kết quả dự đoán */}
+            {mutation.isSuccess && (
+                <ResultBox
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <h4>Kết quả dự đoán:</h4>
+
+                    <p>
+                        <strong>Chẩn đoán chính:</strong>{" "}
+                        {labelMapping[
+                            mutation.data?.data?.final_prediction?.label_name
+                        ] || mutation.data?.data?.final_prediction?.label_name}
+                    </p>
+
+                    <p>
+                        <strong>Top 3 dự đoán:</strong>
+                    </p>
+                    <ul>
+                        {mutation.data?.data?.top_predictions?.top_3?.map(
+                            ({ label_id, score }, idx) => {
+                                const labelName =
+                                    labelMapping[
+                                        mutation.data.data.label_mapping?.[
+                                            String(label_id)
+                                        ]
+                                    ] || `Label ${label_id}`;
+                                return (
+                                    <li key={idx}>
+                                        {labelName}: {score} điểm
+                                    </li>
+                                );
+                            }
+                        )}
+                    </ul>
+
+                    <p>
+                        <h2>Thông tin chi tiết:</h2>
+                    </p>
+                    <VotingExplanationTooltip />
+                    <div>
+                        <h3>Mô hình ảnh:</h3>
+                        {mutation.data?.data?.model_scores?.image_models?.map(
+                            (model, idx) => (
+                                <div key={idx}>
+                                    <strong>
+                                        Mô hình{" "}
+                                        {idx == 0
+                                            ? "DenseNet121"
+                                            : "DenseNet169"}
+                                    </strong>
+                                    :
+                                    <ul>
+                                        {Object.entries(model).map(
+                                            ([label, score], idx) => (
+                                                <li key={idx}>
+                                                    {labelMapping[
+                                                        mutation.data.data
+                                                            .label_mapping?.[
+                                                            label
+                                                        ]
+                                                    ] ||
+                                                        labelMapping[label] ||
+                                                        label}
+                                                    : {score} điểm
+                                                </li>
+                                            )
+                                        )}
+                                    </ul>
+                                </div>
+                            )
+                        )}
+                    </div>
+
+                    <div>
+                        <h3>Mô hình văn bản:</h3>
+                        {mutation.data?.data?.model_scores?.text_models?.map(
+                            (model, idx) => (
+                                <div key={idx}>
+                                    <strong>
+                                        Mô hình{" "}
+                                        {idx == 0 ? "FastText" : "Electra"}
+                                    </strong>
+                                    :
+                                    <ul>
+                                        {Object.entries(model).map(
+                                            ([label, score], idx) => (
+                                                <li key={idx}>
+                                                    {labelMapping[
+                                                        mutation.data.data
+                                                            .label_mapping?.[
+                                                            label
+                                                        ]
+                                                    ] ||
+                                                        labelMapping[label] ||
+                                                        label}
+                                                    : {score} điểm
+                                                </li>
+                                            )
+                                        )}
+                                    </ul>
+                                </div>
+                            )
+                        )}
+                    </div>
+
+                    <div>
+                        <h3>Điểm số mô hình kết hợp:</h3>
+                        <ul>
+                            {Object.entries(
+                                mutation.data?.data?.model_scores?.combined ||
+                                    {}
+                            ).map(([label, score], idx) => (
+                                <li key={idx}>
+                                    {labelMapping[
+                                        mutation.data.data.label_mapping?.[
+                                            label
+                                        ]
+                                    ] ||
+                                        labelMapping[label] ||
+                                        label}
+                                    : {score} điểm
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {duration && (
+                        <p>
+                            <strong>Thời gian chạy:</strong> {duration} giây
+                        </p>
+                    )}
+                </ResultBox>
+            )}
+
             {/* Hiển thị gợi ý triệu chứng */}
             {keywordGroups.map((group, i) => (
                 <div key={i}>
@@ -291,42 +437,6 @@ export default function VotingPage() {
                     </TokenGroup>
                 </div>
             ))}
-
-            {/* Kết quả dự đoán */}
-            {mutation.isSuccess && (
-                <ResultBox
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
-                    <h4>Kết quả dự đoán:</h4>
-
-                    <p>
-                        <strong>Chẩn đoán chính:</strong>{" "}
-                        {mutation.data?.data?.final_prediction?.label_name ||
-                            "Không xác định"}
-                    </p>
-
-                    <p>
-                        <strong>Top 3 dự đoán:</strong>
-                    </p>
-                    <ul>
-                        {mutation.data?.data?.top_predictions?.top_3?.map(
-                            ([id, score], idx) => {
-                                const labelName =
-                                    mutation.data.data.label_mapping?.[
-                                        String(id)
-                                    ] || `Label ${id}`;
-                                return (
-                                    <li key={idx}>
-                                        {labelName}: {score} điểm
-                                    </li>
-                                );
-                            }
-                        )}
-                    </ul>
-                </ResultBox>
-            )}
 
             <ToastContainer />
         </Container>

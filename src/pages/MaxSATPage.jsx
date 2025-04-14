@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { motion } from "framer-motion";
 import { MdOutlineMedicalServices } from "react-icons/md";
 import { keywordGroups } from "../utils/keywordGroups";
+import { labelMapping } from "../utils/labelMapping";
 
 // Styled Components
 const Container = styled.div`
@@ -111,10 +112,15 @@ const ResultBox = styled(motion.div)`
 
 export default function MaxSatPage() {
     const [symptoms, setSymptoms] = useState([]);
+    const [startTime, setStartTime] = useState(null); // Lưu thời gian bắt đầu
+    const [endTime, setEndTime] = useState(null); // Lưu thời gian kết thúc
 
     const mutation = useMutation(async (symptomsToSubmit) => {
         const formData = new FormData();
         formData.append("text", symptomsToSubmit);
+
+        setStartTime(Date.now()); // Ghi nhận thời gian bắt đầu
+
         const res = await axios.post(
             "http://127.0.0.1:8000/maxsat/diagnose",
             formData,
@@ -124,6 +130,9 @@ export default function MaxSatPage() {
                 },
             }
         );
+
+        setEndTime(Date.now()); // Ghi nhận thời gian kết thúc
+
         return res;
     });
 
@@ -158,6 +167,9 @@ export default function MaxSatPage() {
 
     // Helper function to check if a symptom is selected
     const isSelected = (token) => symptoms.includes(token);
+
+    const duration =
+        endTime && startTime ? ((endTime - startTime) / 1000).toFixed(2) : null; // Tính thời gian chạy
 
     return (
         <Container>
@@ -223,7 +235,8 @@ export default function MaxSatPage() {
                     <h4>🔍 Kết quả MaxSAT:</h4>
                     <p>
                         <strong>Chẩn đoán cuối cùng:</strong>{" "}
-                        {mutation?.data?.data?.final_diagnosis}
+                        {labelMapping[mutation?.data?.data?.final_diagnosis] ||
+                            mutation?.data?.data?.final_diagnosis}
                     </p>
                     <p>
                         <strong>Mức độ tự tin:</strong>{" "}
@@ -231,11 +244,18 @@ export default function MaxSatPage() {
                     </p>
                     <p>
                         <strong>Dự đoán MaxSAT:</strong>{" "}
-                        {mutation?.data?.data?.maxsat_predictions?.join(", ")}
+                        {labelMapping[
+                            mutation?.data?.data?.maxsat_predictions?.join(", ")
+                        ] ||
+                            mutation?.data?.data?.maxsat_predictions?.join(
+                                ", "
+                            )}
                     </p>
                     <p>
                         <strong>Dự đoán FastText:</strong>{" "}
-                        {mutation?.data?.data?.fasttext_prediction}
+                        {labelMapping[
+                            mutation?.data?.data?.fasttext_prediction
+                        ] || mutation?.data?.data?.fasttext_prediction}
                     </p>
                     <p>
                         <strong>Độ tin cậy:</strong>{" "}
@@ -245,6 +265,11 @@ export default function MaxSatPage() {
                         <strong>Triệu chứng phát hiện:</strong>{" "}
                         {mutation?.data?.data?.detected_symptoms?.join(", ")}
                     </p>
+                    {duration && (
+                        <p>
+                            <strong>Thời gian chạy:</strong> {duration} giây
+                        </p>
+                    )}
                 </ResultBox>
             )}
 
